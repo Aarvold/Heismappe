@@ -6,7 +6,7 @@ import (
 	"asd"
 	"driver"
 	//"fmt"
-	"time"
+	//"time"
 )
 
 func main() {

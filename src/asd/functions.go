@@ -18,7 +18,7 @@ func Go_to_floor(floor int) {
 		if cur_floor == floor {
 			driver.Set_motor_dir(0)
 			driver.Set_door_open_lamp(1)
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 			driver.Set_door_open_lamp(0)
 			return
 			time.Sleep(100 * time.Millisecond)
