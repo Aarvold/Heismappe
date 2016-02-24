@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	//"log"
+
 	"net"
-	//"os/exec"
+	"os"
+	"os/exec"
 	"strconv"
 	"time"
 )
@@ -14,8 +16,8 @@ const localIP = "129.241.187.161"
 const broadcastIP = "129.241.187.255"
 
 func main() {
-	/*	cmd := exec.Command("sleep", "1")
-		err := cmd.Start()
+
+	/*	err := cmd.Start()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -23,7 +25,7 @@ func main() {
 		err = cmd.Wait()
 		log.Printf("Command finished with error: %v", err)
 	*/
-	iterChan := make(chan int)
+	iterChan := make(chan string)
 	quitServer := make(chan int, 2)
 	quitServer1 := make(chan int)
 
@@ -31,27 +33,47 @@ func main() {
 
 	go stimer(quitServer, quitServer1, iterChan)
 
-	<-quitServer1
+	last_value := <-quitServer1
 
-	go client()
+	go client(last_value)
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(10 * time.Second)
 }
 
-func stimer(quitServer, quitServer1, iterChan chan int) {
+func stimer(quitServer, quitServer1 chan int, iterChan chan string) {
+	var last_value int
+	cmd := exec.Command("gnome-terminal", "-x", "sh", "-c", "go run master-backup.go %d", strconv.Itoa(last_value))
+
+	last_value = 0
+
+	if len(os.Args) > 1 {
+		last_value, _ = strconv.Atoi(os.Args[1])
+		fmt.Printf("Initiated with value = %d \n", last_value)
+	}
 	for {
-		//fmt.Println("stimer kjører")
+
 		timer := time.NewTimer(time.Second * 4)
 		select {
 		case <-timer.C:
 
-			fmt.Println("new Master")
 			quitServer <- 1
+			quitServer1 <- last_value
 			fmt.Println("new Master1")
-			quitServer1 <- 1
-			fmt.Println("new Master2")
 
-		case <-iterChan:
+			cmd.Run()
+
+		case cur_value_string := <-iterChan:
+
+			cur_value, _ := strconv.Atoi(cur_value_string)
+
+			if (cur_value - 1) != (last_value) {
+				quitServer <- 1
+				quitServer1 <- last_value
+				fmt.Println("new Master2")
+				cmd.Run()
+			} else {
+				last_value = cur_value
+			}
 			//fmt.Println("En iterasjon i stimer")
 		}
 	}
@@ -63,7 +85,7 @@ func CheckError(err error) {
 	}
 }
 
-func client() {
+func client(last_value int) {
 	BroadcastAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(broadcastIP, port))
 	CheckError(err)
 
@@ -74,9 +96,9 @@ func client() {
 	CheckError(err)
 
 	defer Conn.Close()
-	i := 0
+	i := last_value
 	for {
-
+		fmt.Printf("Sent %d \n", i)
 		msg := strconv.Itoa(i)
 		i++
 		buf := []byte(msg)
@@ -89,7 +111,7 @@ func client() {
 	}
 }
 
-func server(quitServer, iterChan chan int) {
+func server(quitServer chan int, iterChan chan string) {
 	BroadcastAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(broadcastIP, port))
 	CheckError(err)
 
@@ -103,11 +125,12 @@ func server(quitServer, iterChan chan int) {
 			return
 		default:
 			buff := make([]byte, 1024)
-			fmt.Println("fooooor")
+
 			n, addr, err := BroadcastConn.ReadFromUDP(buff)
-			fmt.Println("etttter")
 			fmt.Println("Received ", string(buff[0:n]), " from ", addr)
-			iterChan <- n
+			val_recv := string(buff[0:n])
+
+			iterChan <- val_recv
 
 			time.Sleep(500 * time.Millisecond)
 
