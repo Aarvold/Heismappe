@@ -1,6 +1,6 @@
 with Ada.Text_IO, Ada.Integer_Text_IO, Ada.Numerics.Float_Random;
 use  Ada.Text_IO, Ada.Integer_Text_IO, Ada.Numerics.Float_Random;
-
+-- https://github.com/vlstill/ttk4145/blob/master/ex08/exercise8.adb
 procedure oving7 is
 
     Count_Failed    : exception;    -- Exception to be raised when counting fails
