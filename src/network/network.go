@@ -1,133 +1,71 @@
-package udp
+package network
 
 import (
+	def "config"
+	"encoding/json"
 	"fmt"
-	"net"
-	"strconv"
+	"log"
+	"time"
 )
 
-var laddr *net.UDPAddr //Local address
-var baddr *net.UDPAddr //Broadcast address
+func Init(outgoingMsg, incomingMsg chan def.Message) {
+	// Ports randomly chosen to reduce likelihood of port collision.
+	const localListenPort = 37103
+	const broadcastListenPort = 37104
 
-type Udp_message struct {
-	Raddr  string //if receiving raddr=senders address, if sending raddr should be set to "broadcast" or an ip:port
-	Data   string //TODO: implement another encoding, strings are meh
-	Length int    //length of received data, in #bytes // N/A for sending
-}
+	const messageSize = 1024
 
-func Udp_init(localListenPort, broadcastListenPort, message_size int, send_ch, receive_ch chan Udp_message) (err error) {
-	//Generating broadcast address
-	baddr, err = net.ResolveUDPAddr("udp4", "255.255.255.255:"+strconv.Itoa(broadcastListenPort))
+	var udpSend = make(chan udpMessage)
+	var udpReceive = make(chan udpMessage, 10)
+	err := udpInit(localListenPort, broadcastListenPort, messageSize, udpSend, udpReceive)
 	if err != nil {
-		return err
+		fmt.Print("UdpInit() error: %v \n", err)
 	}
 
-	//Generating localaddress
-	tempConn, err := net.DialUDP("udp4", nil, baddr)
-	defer tempConn.Close()
-	tempAddr := tempConn.LocalAddr()
-	laddr, err = net.ResolveUDPAddr("udp4", tempAddr.String())
-	laddr.Port = localListenPort
+	go aliveSpammer(outgoingMsg)
+	go forwardOutgoing(outgoingMsg, udpSend)
+	go forwardIncoming(incomingMsg, udpReceive)
 
-	//Creating local listening connections
-	localListenConn, err := net.ListenUDP("udp4", laddr)
-	if err != nil {
-		return err
-	}
-
-	//Creating listener on broadcast connection
-	broadcastListenConn, err := net.ListenUDP("udp", baddr)
-	if err != nil {
-		localListenConn.Close()
-		return err
-	}
-
-	go udp_receive_server(localListenConn, broadcastListenConn, message_size, receive_ch)
-	go udp_transmit_server(localListenConn, broadcastListenConn, send_ch)
-
-	//	fmt.Printf("Generating local address: \t Network(): %s \t String(): %s \n", laddr.Network(), laddr.String())
-	//	fmt.Printf("Generating broadcast address: \t Network(): %s \t String(): %s \n", baddr.Network(), baddr.String())
-	return err
+	log.Println(def.ColG, "Network initialised.", def.ColN)
 }
 
-func udp_transmit_server(lconn, bconn *net.UDPConn, send_ch chan Udp_message) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_transmit_server: %s \n Closing connection.", r)
-			lconn.Close()
-			bconn.Close()
-		}
-	}()
-
-	var err error
-	var n int
-
+// aliveSpammer periodically sends messages on the network to notify all
+// lifts that this lift is still online ("alive").
+func aliveSpammer(outgoingMsg chan<- def.Message) {
+	const spamInterval = 400 * time.Millisecond
+	alive := def.Message{Category: def.Alive, Floor: -1, Button: -1, Cost: -1}
 	for {
-		//		fmt.Printf("udp_transmit_server: waiting on new value on Global_Send_ch \n")
-		msg := <-send_ch
-		//		fmt.Printf("Writing %s \n", msg.Data)
-		if msg.Raddr == "broadcast" {
-			n, err = lconn.WriteToUDP([]byte(msg.Data), baddr)
-		} else {
-			raddr, err := net.ResolveUDPAddr("udp", msg.Raddr)
-			if err != nil {
-				fmt.Printf("Error: udp_transmit_server: could not resolve raddr\n")
-				panic(err)
-			}
-			n, err = lconn.WriteToUDP([]byte(msg.Data), raddr)
-		}
-		if err != nil || n < 0 {
-			fmt.Printf("Error: udp_transmit_server: writing\n")
-			panic(err)
-		}
-		//		fmt.Printf("udp_transmit_server: Sent %s to %s \n", msg.Data, msg.Raddr)
+		outgoingMsg <- alive
+		time.Sleep(spamInterval)
 	}
 }
 
-func udp_receive_server(lconn, bconn *net.UDPConn, message_size int, receive_ch chan Udp_message) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_receive_server: %s \n Closing connection.", r)
-			lconn.Close()
-			bconn.Close()
-		}
-	}()
-
-	bconn_rcv_ch := make(chan Udp_message)
-	lconn_rcv_ch := make(chan Udp_message)
-
-	go udp_connection_reader(lconn, message_size, lconn_rcv_ch)
-	go udp_connection_reader(bconn, message_size, bconn_rcv_ch)
-
+// forwardOutgoing continuosly checks for messages to be sent on the network
+// by reading the OutgoingMsg channel. Each message read is sent to the udp file
+// as JSON.
+func forwardOutgoing(outgoingMsg <-chan def.Message, udpSend chan<- udpMessage) {
 	for {
-		select {
+		msg := <-outgoingMsg
 
-		case buf := <-bconn_rcv_ch:
-			receive_ch <- buf
-
-		case buf := <-lconn_rcv_ch:
-			receive_ch <- buf
+		jsonMsg, err := json.Marshal(msg)
+		if err != nil {
+			log.Printf("%sjson.Marshal error: %v\n%s", def.ColR, err, def.ColN)
 		}
+
+		udpSend <- udpMessage{raddr: "broadcast", data: jsonMsg, length: len(jsonMsg)}
 	}
 }
 
-func udp_connection_reader(conn *net.UDPConn, message_size int, rcv_ch chan Udp_message) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_connection_reader: %s \n Closing connection.", r)
-			conn.Close()
-		}
-	}()
-
+func forwardIncoming(incomingMsg chan<- def.Message, udpReceive <-chan udpMessage) {
 	for {
-		buf := make([]byte, message_size)
-		//		fmt.Printf("udp_connection_reader: Waiting on data from UDPConn\n")
-		n, raddr, err := conn.ReadFromUDP(buf)
-		//		fmt.Printf("udp_connection_reader: Received %s from %s \n", string(buf), raddr.String())
-		if err != nil || n < 0 {
-			fmt.Printf("Error: udp_connection_reader: reading\n")
-			panic(err)
+		udpMessage := <-udpReceive
+		var message def.Message
+
+		if err := json.Unmarshal(udpMessage.data[:udpMessage.length], &message); err != nil {
+			fmt.Printf("json.Unmarshal error: %s\n", err)
 		}
-		rcv_ch <- Udp_message{Raddr: raddr.String(), Data: string(buf), Length: n}
+
+		message.Addr = udpMessage.raddr
+		incomingMsg <- message
 	}
 }

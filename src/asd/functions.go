@@ -3,6 +3,7 @@ package asd
 import (
 	"driver"
 	//"fmt"
+	def "config"
 	"math"
 	"time"
 )
@@ -31,7 +32,7 @@ func Update_lights() {
 	for {
 		cur_floor = driver.Get_floor_sensor_signal()
 		for buttontype := 0; buttontype < 3; buttontype++ {
-			for floor := 0; floor < driver.N_floors; floor++ {
+			for floor := 0; floor < def.NumFloors; floor++ {
 				if driver.Get_button_signal(buttontype, floor) == 1 {
 					driver.Set_button_lamp(buttontype, floor, 1)
 				}

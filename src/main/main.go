@@ -7,12 +7,18 @@ import (
 	"driver"
 	//"fmt"
 	//"time"
+	def "config"
+	"network"
 )
 
 func main() {
 	driver.Elev_init()
 	go asd.Update_lights()
-	go asd.Go_to_floor(2)
+
+	outgoingMsg := make(chan def.Message)
+	incomingMsg := make(chan def.Message)
+	go network.Init(outgoingMsg, incomingMsg)
+
 	quit := make(chan int)
 	go asd.Quit_program(quit)
 
