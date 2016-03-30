@@ -23,6 +23,9 @@ const (
 // Local IP address
 var Laddr string
 
+var CurFloor int
+var CurDir int
+
 type Keypress struct {
 	Button int
 	Floor  int
