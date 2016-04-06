@@ -5,10 +5,11 @@ package main
 import (
 	"asd"
 	"driver"
-	//"fmt"
+	"fmt"
 	//"time"
 	def "config"
 	//"network"
+	"queue"
 )
 
 func main() {
@@ -21,11 +22,12 @@ func main() {
 	//incomingMsg := make(chan def.Message)
 	//go network.Init(outgoingMsg, incomingMsg)
 
-	var orderlist = []int{5, 4, 2, 3, 4, 6}
-	def.CurFloor = 7
+	var orderlist = []int{-5, -4, 2, 3, -6}
+	def.CurFloor = 3
 	def.CurDir = -1
 
-	print(asd.Cost(orderlist))
+	fmt.Printf("%v", queue.Update_orderlist(orderlist, 4))
+	fmt.Print(queue.Cost(orderlist, 4))
 
 	quit := make(chan int)
 	go asd.Quit_program(quit)

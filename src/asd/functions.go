@@ -56,34 +56,3 @@ func Quit_program(quit chan int) {
 func Run_Elev() {
 
 }
-
-func Cost(orderlist []int) int {
-	var cost float64 = math.Abs(float64(def.CurFloor - orderlist[0]))
-	for i := 0; i < len(orderlist)-1; i++ {
-		cost += math.Abs(float64(orderlist[i] - orderlist[i+1]))
-	}
-	return int(cost)
-}
-
-func Add_Order(orderlist []int, orderedFloor, buttontype int) {
-	if buttontype == def.BtnInside{
-		var i = 0
-		for i<len(orderlist)-1{
-			if orderedFloor==orderlist[i]{
-				return -1
-			}
-			else if (orderedFloor<orderlist[i])&&(orderedFloor>orderlist[i+1]){
-				var neworderlist=[]int
-				for j<len(orderlist){
-					if j==i{
-						neworderlist.append(neworderlist,orderedFloor)
-						j-=1
-					}
-					else{
-						neworderlist.append(neworderlist,orderlist[j])
-					}
-				}
-			}
-		}
-	}
-}
