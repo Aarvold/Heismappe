@@ -26,6 +26,8 @@ var Laddr string
 var CurFloor int
 var CurDir int
 
+var Orders[]int
+
 type Keypress struct {
 	Button int
 	Floor  int

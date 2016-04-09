@@ -14,6 +14,14 @@ func Append_and_sort_list(orderlist []int, newOrder int) []int {
 }
 
 func Update_orderlist(orderlist []int, newOrder int) []int {
+
+	for j:=0;j<len(orderlist);j++{
+		if orderlist[j]==newOrder{
+			//fmt.Print("Info from Update_orderlist: Order already ordered \n")
+			return orderlist
+		}
+	}
+
 	tempOrderlist := Append_and_sort_list(orderlist, newOrder)
 
 	var index = Get_element_index(tempOrderlist)
@@ -59,11 +67,10 @@ func Get_index(orderlist []int, new_order int) int {
 	return -1
 }
 
-//må fikses
 func Cost(orderlist []int, new_order int) int {
 	new_orderlist := Update_orderlist(orderlist, new_order)
 	index := Get_index(new_orderlist, new_order)
-	fmt.Print(index)
+	//fmt.Print(index)
 	var cost float64 = math.Abs(float64(float64(def.CurFloor) - math.Abs(float64(orderlist[0]))))
 
 	for i := 0; i < index-1; i++ {
