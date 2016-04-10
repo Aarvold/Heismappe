@@ -1,4 +1,4 @@
-package asd
+package elevRun
 
 import (
 	"driver"
@@ -6,16 +6,20 @@ import (
 	def "config"
 	"math"
 	"time"
+	"helpFunc"
 	"queue"
 )
 
-func Go_to_floor() {
+
+func Run_elev() {
 	var dir float64
+	driver.Elev_init()
+
 	for {
 		if len(def.Orders)>0{
 			if ((def.Orders[0] - def.CurFloor)!=0) {
 				//difference divided with abs(difference) gives direction = -1 or 1
-				dir = (float64(math.Abs(float64(def.Orders[0])) - float64(def.CurFloor))) / math.Abs(float64(math.Abs(float64(def.Orders[0])) - float64(def.CurFloor)))
+				dir = (math.Abs(float64(def.Orders[0])) - float64(def.CurFloor)) / float64(helpFunc.DifferenceAbs(def.Orders[0],def.CurFloor))
 				driver.Set_motor_dir(int(dir))
 				def.CurDir = int(dir)
 
@@ -39,31 +43,35 @@ func Go_to_floor() {
 	}
 }
 
-func Update_lights(outgoingMsg <-chan def.Message) {
+func Update_lights_orders(outgoingMsg chan def.Message) {
 	var floorSensorSignal int
+	var buttonState[def.NumFloors][def.NumButtons] bool
 	for {
 		floorSensorSignal = driver.Get_floor_sensor_signal()
 		for buttontype := 0; buttontype < 3; buttontype++ {
 			for floor := 0; floor < def.NumFloors; floor++ {
 				if driver.Get_button_signal(buttontype, floor) == 1 {
 					driver.Set_button_lamp(buttontype, floor, 1)
-					if(buttontype == def.BtnUp || buttontype == def.BtnDown){
-						msg := def.Message{Category: def.NewOrder, Floor: floor, Button: buttontype, Cost: queue.Cost(def.Orders,floor)}
-						//outgoingMsg <- msg
 
-						fmt.Print("aefaef")
-					} else {
+					if !buttonState[floor][buttontype]{
 
-						//If the desired floor is under the elevator it is set as a order down
-						if floor < def.CurFloor{
-							def.Orders = queue.Update_orderlist(def.Orders,-floor)
-						}else {
-							def.Orders = queue.Update_orderlist(def.Orders,floor)
+						if(buttontype == def.BtnUp || buttontype == def.BtnDown){
+							msg := def.Message{Category: def.NewOrder, Floor: floor, Button: buttontype, Cost: queue.Cost(def.Orders,floor)}
+							outgoingMsg <- msg
+						} else {
+							//If the desired floor is under the elevator it is set as a order down
+							if floor < def.CurFloor{
+								def.Orders = queue.Update_orderlist(def.Orders,-floor)
+							}else {
+								def.Orders = queue.Update_orderlist(def.Orders,floor)
+							}
 						}
-						
 					}
-
+					buttonState[floor][buttontype] = true
+				} else{
+					buttonState[floor][buttontype] = false
 				}
+
 				if floorSensorSignal != -1 {
 					def.CurFloor = floorSensorSignal
 					driver.Set_floor_indicator(def.CurFloor)
@@ -76,21 +84,13 @@ func Update_lights(outgoingMsg <-chan def.Message) {
 }
 
 
-func Quit_program(quit chan int) {
-	for {
-		time.Sleep(time.Second)
-		if driver.Get_stop_signal() == 1 {
-			quit <- 1
-		}
-	}
-}
-/*
-func Run_elev(){
-	for{
-		if len(def.Orders)>0{
-			Go_to_floor(def.Orders[0])
 
-		}
-	}
+
+
+
+/*
+
+func DifferenceAbs(val1 ,val2 int) int{
+	return int(math.Abs(math.Abs(float64(val1))-math.Abs(float64(val2))))
 }
 */

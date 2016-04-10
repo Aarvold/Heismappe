@@ -3,8 +3,8 @@ package queue
 import (
 	def "config"
 	"fmt"
-	"math"
 	"sort"
+	"helpFunc"
 )
 
 func Append_and_sort_list(orderlist []int, newOrder int) []int {
@@ -67,14 +67,19 @@ func Get_index(orderlist []int, new_order int) int {
 	return -1
 }
 
-func Cost(orderlist []int, new_order int) int {
-	new_orderlist := Update_orderlist(orderlist, new_order)
-	index := Get_index(new_orderlist, new_order)
+func Cost(orderlist []int, newOrder int) int {
+	new_orderlist := Update_orderlist(orderlist, newOrder)
+	index := Get_index(new_orderlist, newOrder)
 	//fmt.Print(index)
-	var cost float64 = math.Abs(float64(float64(def.CurFloor) - math.Abs(float64(orderlist[0]))))
+	
+	var cost = helpFunc.DifferenceAbs(def.CurFloor,newOrder)
 
-	for i := 0; i < index-1; i++ {
-		cost += math.Abs(float64(math.Abs(float64(orderlist[i])) - math.Abs(float64(orderlist[i+1]))))
+	if len(orderlist)>0{
+		cost = helpFunc.DifferenceAbs(def.CurFloor,orderlist[0])
+		for i := 0; i < index-1; i++ {
+			cost += helpFunc.DifferenceAbs(orderlist[i],orderlist[i+1])
+		}	
 	}
 	return int(cost)
 }
+

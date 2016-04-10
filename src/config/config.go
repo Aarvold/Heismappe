@@ -25,7 +25,6 @@ var Laddr string
 
 var CurFloor int
 var CurDir int
-
 var Orders[]int
 
 type Keypress struct {
@@ -66,3 +65,4 @@ const ColM = "\x1b[35;1m" // Magenta
 const ColC = "\x1b[36;1m" // Cyan
 const ColW = "\x1b[37;1m" // White
 const ColN = "\x1b[0m"    // Grey (neutral)
+
