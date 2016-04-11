@@ -77,7 +77,6 @@ func Update_lights_orders(outgoingMsg chan def.Message) {
 					driver.Set_floor_indicator(def.CurFloor)
 					
 				}
-				time.Sleep(1 * time.Millisecond)
 			}
 		}
 	}

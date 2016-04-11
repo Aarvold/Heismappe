@@ -19,11 +19,13 @@ var numOfOnlineElevs int
 var outgoingMsg = make(chan def.Message, 10)
 var incomingMsg = make(chan def.Message, 10)
 var deadChan = make(chan network.UdpConnection)
+var costMsg = make(chan def.Message,10)
 
 func main() {
 	def.CurFloor = 4
 	def.CurDir = -1
 	var ordrs = []int{-3,-2,1,3,4}
+
 	fmt.Printf("%d \n",queue.Cost(ordrs,1))
 
 	fmt.Printf("%d \n",helpFunc.DifferenceAbs(1,-8))
@@ -32,10 +34,12 @@ func main() {
 	go elevRun.Update_lights_orders(outgoingMsg)
 	go network.Init(outgoingMsg, incomingMsg)
 
+	//go fewafear(costMsg)
+
 	go func() {
 		for {
 			msg := <-incomingMsg
-			handle_msg(msg,outgoingMsg)
+			handle_msg(msg,outgoingMsg,costMsg)
 		}
 	}()
 
@@ -50,8 +54,8 @@ func main() {
 }
 
 
-func handle_msg(msg def.Message,outgoingMsg chan def.Message){
-	const aliveTimeout = 2 * time.Second
+func handle_msg(msg def.Message, outgoingMsg, costMsg chan def.Message){
+	const aliveTimeout = 2 * time.Second 
 
 	switch msg.Category {
 	case def.Alive:
@@ -81,9 +85,69 @@ func handle_msg(msg def.Message,outgoingMsg chan def.Message){
 		driver.Set_button_lamp(msg.Button, msg.Floor, 0)
 		
 	case def.Cost:
+		costMsg<- msg
+		/*
+		costs = append(costs, msg)
+		if len(onlineElevs)==numCostRecieved(order){
+			sort(costs)
+			if(costs[0]==cost(self)){
+				if(costs[0]==costs[1]){
+					//fiks det
+				}else{
+					def.Orders = queue.Update_orderlist
+
+				}
+			}
+		}
+		*/
 		
 	}
 }
+
+
+//----------------------------Dette skal legges et annet sted------------------------------
+
+type reply struct {
+	cost int
+	lift string
+}
+type order struct {
+	floor  int
+	button int
+	timer  *time.Timer
+}
+
+func assign_external_order(reply chan def.Message){
+	recievedReplys := make(map[order][]reply)
+	var overtime = make(chan *order)
+	const timeoutDuration = 10 * time.Second
+
+	for{
+		select {
+			case msg := <-reply:
+				newOrder := order{floor: message.Floor, button: message.Button}
+				newReply := reply{cost: message.Cost, lift: message.Addr[13:15]}
+
+
+
+
+			case <- overtime:
+				fmt.print("Assign order timeout: Did not recieve all replyes before timeout")
+		}
+	}
+}
+
+func costTimer(newOrder *order, timeout chan<- *order) {
+	<-newOrder.timer.C
+	timeout <- newOrder
+}
+
+func equal(o1, o2 order) bool {
+	return o1.floor == o2.floor && o1.button == o2.button
+}
+
+//-------------------------------------------------------------------------------------------
+
 
 func connectionTimer(connection *network.UdpConnection) {
 	<-connection.Timer.C
