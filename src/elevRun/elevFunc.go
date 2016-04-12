@@ -19,7 +19,7 @@ func Run_elev() {
 		if len(def.Orders)>0{
 			if ((def.Orders[0] - def.CurFloor)!=0) {
 				//difference divided with abs(difference) gives direction = -1 or 1
-				dir = (math.Abs(float64(def.Orders[0])) - float64(def.CurFloor)) / float64(helpFunc.DifferenceAbs(def.Orders[0],def.CurFloor))
+				dir = (math.Abs(float64(def.Orders[0])) - float64(def.CurFloor)) / float64(helpFunc.Difference_abs(def.Orders[0],def.CurFloor))
 				driver.Set_motor_dir(int(dir))
 				def.CurDir = int(dir)
 
@@ -84,12 +84,3 @@ func Update_lights_orders(outgoingMsg chan def.Message) {
 
 
 
-
-
-
-/*
-
-func DifferenceAbs(val1 ,val2 int) int{
-	return int(math.Abs(math.Abs(float64(val1))-math.Abs(float64(val2))))
-}
-*/

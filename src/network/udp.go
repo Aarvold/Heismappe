@@ -36,6 +36,7 @@ func udpInit(localListenPort, broadcastListenPort, message_size int, send_ch, re
 	laddr.Port = localListenPort
 	def.Laddr = laddr.String()
 
+
 	//Creating local listening connections
 	localListenConn, err := net.ListenUDP("udp4", laddr)
 	if err != nil {

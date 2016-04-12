@@ -72,12 +72,12 @@ func Cost(orderlist []int, newOrder int) int {
 	index := Get_index(new_orderlist, newOrder)
 	//fmt.Print(index)
 	
-	var cost = helpFunc.DifferenceAbs(def.CurFloor,newOrder)
+	var cost = helpFunc.Difference_abs(def.CurFloor,newOrder)
 
 	if len(orderlist)>0{
-		cost = helpFunc.DifferenceAbs(def.CurFloor,orderlist[0])
+		cost = helpFunc.Difference_abs(def.CurFloor,orderlist[0])
 		for i := 0; i < index-1; i++ {
-			cost += helpFunc.DifferenceAbs(orderlist[i],orderlist[i+1])
+			cost += helpFunc.Difference_abs(orderlist[i],orderlist[i+1])
 		}	
 	}
 	return int(cost)
