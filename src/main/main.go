@@ -23,28 +23,18 @@ var deadChan = make(chan network.UdpConnection)
 var costMsg = make(chan def.Message, 10)
 
 func main() {
-	//def.CurFloor = 4
-	//def.CurDir = -1
-	var ordrs = []int{-3, -2, 1, 3, 4}
 
-	fmt.Printf("%d \n", queue.Cost(ordrs, 1))
-	fmt.Printf("%d \n", helpFunc.Difference_abs(1, -8))
-
-	go elevRun.Run_elev()
+	go elevRun.Run_elev(outgoingMsg)
 	go elevRun.Update_lights_orders(outgoingMsg)
 	go network.Init(outgoingMsg, incomingMsg)
-
-	//go fewafear(costMsg)
 	go assign_external_order(costMsg)
+
 	go func() {
 		for {
 			msg := <-incomingMsg
 			handle_msg(msg, outgoingMsg, costMsg)
 		}
 	}()
-
-	//fmt.Printf("%v", queue.Update_orderlist(orderlist, 4))
-	//fmt.Print(queue.Cost(orderlist, 4))
 
 	quit := make(chan int)
 	go Quit_program(quit)
@@ -67,7 +57,7 @@ func handle_msg(msg def.Message, outgoingMsg, costMsg chan def.Message) {
 			fmt.Printf("%sConnection to IP %s established!%s\n", def.ColG, msg.Addr[0:15], def.ColN)
 		}
 	case def.NewOrder:
-		fmt.Printf("%sNew order recieved %s \n", def.ColM, def.ColN)
+		fmt.Printf("%sNew order recieved to floor %d %s \n", def.ColM, msg.Floor, def.ColN)
 		driver.Set_button_lamp(msg.Button, msg.Floor, 1)
 		temp := def.Orders
 		costMsg := def.Message{Category: def.Cost, Floor: msg.Floor, Button: msg.Button, Cost: queue.Cost(temp, helpFunc.Order_dir(msg.Floor, msg.Button))}
@@ -106,6 +96,13 @@ func assign_external_order(costMsg chan def.Message) {
 			newCost := rcvCost{cost: msg.Cost, elevAddr: msg.Addr[12:15]}
 			duplicate := false
 
+			//Sjekker om det det finnes en lik ordre i rcvList
+			for oldOrder := range rcvList {
+				if (newOrder.floor == oldOrder.floor) && (newOrder.button == oldOrder.button) {
+					newOrder = oldOrder
+				}
+			}
+
 			if costList, exist := rcvList[newOrder]; exist {
 
 				for _, adr := range costList {
@@ -115,19 +112,22 @@ func assign_external_order(costMsg chan def.Message) {
 
 				}
 				if !duplicate {
+					//fmt.Printf("Her blir det lagt tin en cost\n")
 					rcvList[newOrder] = append(rcvList[newOrder], newCost)
 				}
 
 			} else {
 				newOrder.timer = time.NewTimer(timeoutDuration)
+				//fmt.Printf("Her blir en ordre med cost lagt til for forste gang\n")
 				rcvList[newOrder] = []rcvCost{newCost}
 				go costTimer(newOrder, overtime)
 			}
+			//fmt.Printf("%sLen rcvlst = %d and numOnlElev = %d %s\n", def.ColM, len(rcvList[newOrder]), numOfOnlineElevs, def.ColN)
 			if len(rcvList[newOrder]) == numOfOnlineElevs {
 				if this_elevator_has_the_lowest_cost(rcvList[newOrder]) {
 					temp := def.Orders
-					temp = queue.Update_orderlist(temp, helpFunc.Order_dir(newOrder.floor, newOrder.button))
-					fmt.Printf("%s Order list is updated to %v %s \n", def.ColR, def.Orders, def.ColN)
+					temp = queue.Update_orderlist(temp, helpFunc.Order_dir(newOrder.floor, newOrder.button), false)
+					fmt.Printf("%sExternal: Order list is updated to %v %s \n", def.ColR, def.Orders, def.ColN)
 				}
 				delete(rcvList, newOrder)
 				newOrder.timer.Stop()
@@ -136,10 +136,9 @@ func assign_external_order(costMsg chan def.Message) {
 		case newOrder := <-overtime:
 			fmt.Print("Assign order timeout: Did not recieve all replies before timeout\n")
 			if this_elevator_has_the_lowest_cost(rcvList[newOrder]) {
-				def.Orders = queue.Update_orderlist(def.Orders, helpFunc.Order_dir(newOrder.floor, newOrder.button))
+				def.Orders = queue.Update_orderlist(def.Orders, helpFunc.Order_dir(newOrder.floor, newOrder.button), false)
 			}
 			delete(rcvList, newOrder)
-
 		}
 	}
 }
@@ -154,15 +153,14 @@ func this_elevator_has_the_lowest_cost(listOfCosts []rcvCost) bool {
 	var bestCost = rcvCost{cost: 1000, elevAddr: "999"}
 
 	for _, costStruct := range listOfCosts {
-		cS, _ := strconv.Atoi(costStruct.elevAddr)
-		fmt.Printf("cost = %d addr %d\n", costStruct.cost, cS)
+		//fmt.Printf("cost = %d addr %d\n", costStruct.cost, cS)
 		if costStruct.cost < bestCost.cost {
 			bestCost = costStruct
 		} else if costStruct.cost == bestCost.cost {
 			cS, _ := strconv.Atoi(costStruct.elevAddr)
 			bC, _ := strconv.Atoi(bestCost.elevAddr)
 			// if equal cost: choose the minimum of the last three numbers in IP
-			if cS <= bC {
+			if cS > bC {
 				bestCost = costStruct
 			}
 		}

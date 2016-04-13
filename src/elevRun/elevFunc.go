@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func Run_elev() {
+func Run_elev(outgoingMsg chan def.Message) {
 	var dir float64
 	driver.Elev_init()
 
@@ -30,21 +30,28 @@ func Run_elev() {
 			//def.CurFloor = driver.Get_floor_sensor_signal()
 			//Hvis heisen er på vei opp/ned og er i en etasje, så fucker den opp
 			if float64(floorSensor) == math.Abs(float64(def.Orders[0])) {
-				fmt.Printf("%sFloat cur floor = %v float def.Orders[0] = %v %s \n", def.ColY, float64(floorSensor), math.Abs(float64(def.Orders[0])), def.ColN)
+				//fmt.Printf("%sFloat cur floor = %v float def.Orders[0] = %v %s \n", def.ColY, float64(floorSensor), math.Abs(float64(def.Orders[0])), def.ColN)
 				driver.Set_motor_dir(0)
 				driver.Set_door_open_lamp(1)
 				time.Sleep(2 * time.Second)
 				driver.Set_door_open_lamp(0)
 				//Kjøre en func som setter motorDir her?
+				if def.Orders[0] < 0 {
+					msg := def.Message{Category: def.CompleteOrder, Floor: def.CurFloor, Button: def.BtnDown, Cost: -1}
+					outgoingMsg <- msg
+				} else {
+					msg := def.Message{Category: def.CompleteOrder, Floor: def.CurFloor, Button: def.BtnUp, Cost: -1}
+					outgoingMsg <- msg
+				}
 
 				//Removes the first element in def.Orders
-				fmt.Printf("%sCurrent floor %d and orders[0] %d and orders = %v %s\n", def.Col0, def.CurFloor, def.Orders[0], def.Orders, def.ColN)
+				//fmt.Printf("%sCurrent floor %d and orders[0] %d and orders = %v %s\n", def.Col0, def.CurFloor, def.Orders[0], def.Orders, def.ColN)
 				def.Orders = append(def.Orders[:0], def.Orders[1:]...)
-				//Her må vi sende msg til alle om at eksterne ordre skal settet til null
-				driver.Set_button_lamp(def.BtnUp, def.CurFloor, 0)
-				driver.Set_button_lamp(def.BtnDown, def.CurFloor, 0)
+
 				driver.Set_button_lamp(def.BtnInside, def.CurFloor, 0)
-				fmt.Printf("Updated orderlist is %v \n", def.Orders)
+
+				fmt.Printf("%sOrder deleted updated orderlist is %v %s \n", def.ColB, def.Orders, def.ColN)
+
 			}
 		}
 	}
@@ -67,12 +74,13 @@ func Update_lights_orders(outgoingMsg chan def.Message) {
 							outgoingMsg <- msg
 						} else {
 							//Internal orders: if the desired floor is under the elevator it is set as a order down
-							fmt.Printf("Intern ordre mottat \n")
+							//fmt.Printf("Intern ordre mottat \n")
 							if floor < def.CurFloor {
-								def.Orders = queue.Update_orderlist(def.Orders, -floor)
+								def.Orders = queue.Update_orderlist(def.Orders, -floor, false)
 							} else {
-								def.Orders = queue.Update_orderlist(def.Orders, floor)
+								def.Orders = queue.Update_orderlist(def.Orders, floor, false)
 							}
+							fmt.Printf("%sInternal: Order list is updated to %v %s \n", def.ColR, def.Orders, def.ColN)
 						}
 					}
 					buttonState[floor][buttontype] = true

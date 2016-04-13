@@ -2,9 +2,9 @@ package queue
 
 import (
 	def "config"
-
 	"fmt"
 	"helpFunc"
+	//"math"
 	"sort"
 )
 
@@ -14,13 +14,13 @@ func Append_and_sort_list(orderlist []int, newOrder int) []int {
 	return orderlist
 }
 
-func Update_orderlist(orderlist []int, newOrder int) []int {
+func Update_orderlist(orderlist []int, newOrder int, costfunction bool) []int {
 
 	//fmt.Printf("pre orders in append = %v \n", def.Orders)
 
 	for j := 0; j < len(orderlist); j++ {
 		if orderlist[j] == newOrder {
-			fmt.Print("Info from Update_orderlist: Order already ordered \n")
+			fmt.Printf("Info from Update_orderlist: Orderto floor %d already ordered \n", newOrder)
 			return orderlist
 		}
 	}
@@ -31,28 +31,43 @@ func Update_orderlist(orderlist []int, newOrder int) []int {
 	temp1 := tempOrderlist[:index]
 	temp2 := tempOrderlist[index:]
 
-	fmt.Printf("temp 1 = %v temp2 = %v tempOrderlist = %v \n", temp1, temp2, tempOrderlist)
-
-	temp2_length := len(temp2)
+	/*if def.CurDir == -1 { //&& (def.CurFloor < int(math.Abs(float64(newOrder)))) {
+		temp1 = tempOrderlist[index:]
+		temp2 = tempOrderlist[:index]
+		fmt.Printf("temp 1 = %v temp2 = %v tempOrderlist = %v \n", temp1, temp2, tempOrderlist)
+	} else {
+		temp1 = tempOrderlist[:index]
+		temp2 = tempOrderlist[index:]
+		fmt.Printf("temp 1 = %v temp2 = %v tempOrderlist = %v \n", temp1, temp2, tempOrderlist)
+	}
+	*/
 
 	i := 0
-	for i < temp2_length {
+	for i < len(temp2) {
 		temp1 = append(temp1, temp2[i])
 		i++
 	}
-	//fmt.Printf("temp1 etter for loop = %v \n ", temp1)
+	fmt.Printf("temp1 etter for loop = %v \n ", temp1)
 	//orderlist = temp1
 
 	//fmt.Printf("post orders in append = %v \n", def.Orders)
 
 	//midletidig fix fordi den fucker opp
-	def.Orders = temp1
+	if !costfunction {
+		fmt.Printf("!!!!!!!!!!!!!!!!!! Orders !!!!!!!!!!!!!!!!!!\n")
+		def.Orders = temp1
+	}
 	return temp1
 }
 
 func Get_element_index(orderlist []int) int {
-	nextFloor := def.CurFloor + def.CurDir
-	fmt.Printf("%sCurrent dir = %d %s \n", def.ColB, def.CurDir, def.ColN)
+	nextFloor := def.CurFloor
+	if def.CurDir == -1 {
+		//fmt.Printf("asfefaef\n")
+		nextFloor = def.CurFloor - 1
+	}
+
+	//fmt.Printf("%sCurrent dir = %d %s \n", def.ColB, def.CurDir, def.ColN)
 	orderNumber := def.CurDir * nextFloor
 	var index = 0
 	//må sjekkes
@@ -83,7 +98,7 @@ func Get_index(orderlist []int, new_order int) int {
 
 func Cost(orderlist []int, newOrder int) int {
 	//fmt.Printf("pre orders in cost = %v \n", def.Orders)
-	new_orderlist := Update_orderlist(orderlist, newOrder)
+	new_orderlist := Update_orderlist(orderlist, newOrder, true)
 	index := Get_index(new_orderlist, newOrder)
 	//fmt.Print(index)
 
@@ -96,5 +111,5 @@ func Cost(orderlist []int, newOrder int) int {
 		}
 	}
 	//fmt.Printf("post orders in cost = %v \n", def.Orders)
-	return int(cost)
+	return int(cost) + 2*len(def.Orders)
 }
