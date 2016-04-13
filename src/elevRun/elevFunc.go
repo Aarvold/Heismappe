@@ -1,43 +1,50 @@
 package elevRun
 
 import (
+	def "config"
 	"driver"
 	"fmt"
-	def "config"
-	"math"
-	"time"
 	"helpFunc"
+	"math"
 	"queue"
+	"time"
 )
-
 
 func Run_elev() {
 	var dir float64
 	driver.Elev_init()
 
 	for {
-		if len(def.Orders)>0{
-			if ((def.Orders[0] - def.CurFloor)!=0) {
+		floorSensor := driver.Get_floor_sensor_signal()
+		if (floorSensor == 0) || (floorSensor == def.NumFloors-1) {
+			def.CurDir = -def.CurDir
+		}
+		if (len(def.Orders) > 0) && (floorSensor != -1) {
+			if (math.Abs(float64(def.Orders[0])) - float64(def.CurFloor)) != 0 {
 				//difference divided with abs(difference) gives direction = -1 or 1
-				dir = (math.Abs(float64(def.Orders[0])) - float64(def.CurFloor)) / float64(helpFunc.Difference_abs(def.Orders[0],def.CurFloor))
+				dir = (math.Abs(float64(def.Orders[0])) - float64(def.CurFloor)) / (float64(helpFunc.Difference_abs(def.Orders[0], def.CurFloor)))
 				driver.Set_motor_dir(int(dir))
 				def.CurDir = int(dir)
-
 			}
 
 			//def.CurFloor = driver.Get_floor_sensor_signal()
-			if float64(def.CurFloor) == math.Abs(float64(def.Orders[0])) {
+			//Hvis heisen er på vei opp/ned og er i en etasje, så fucker den opp
+			if float64(floorSensor) == math.Abs(float64(def.Orders[0])) {
+				fmt.Printf("%sFloat cur floor = %v float def.Orders[0] = %v %s \n", def.ColY, float64(floorSensor), math.Abs(float64(def.Orders[0])), def.ColN)
 				driver.Set_motor_dir(0)
 				driver.Set_door_open_lamp(1)
 				time.Sleep(2 * time.Second)
 				driver.Set_door_open_lamp(0)
+				//Kjøre en func som setter motorDir her?
+
 				//Removes the first element in def.Orders
-				fmt.Printf("%v",def.Orders)
-				def.Orders=append(def.Orders[:0],def.Orders[1:]...)
+				fmt.Printf("%sCurrent floor %d and orders[0] %d and orders = %v %s\n", def.Col0, def.CurFloor, def.Orders[0], def.Orders, def.ColN)
+				def.Orders = append(def.Orders[:0], def.Orders[1:]...)
+				//Her må vi sende msg til alle om at eksterne ordre skal settet til null
 				driver.Set_button_lamp(def.BtnUp, def.CurFloor, 0)
 				driver.Set_button_lamp(def.BtnDown, def.CurFloor, 0)
 				driver.Set_button_lamp(def.BtnInside, def.CurFloor, 0)
-				fmt.Printf("%v \n",def.Orders)
+				fmt.Printf("Updated orderlist is %v \n", def.Orders)
 			}
 		}
 	}
@@ -45,7 +52,7 @@ func Run_elev() {
 
 func Update_lights_orders(outgoingMsg chan def.Message) {
 	var floorSensorSignal int
-	var buttonState[def.NumFloors][def.NumButtons] bool
+	var buttonState [def.NumFloors][def.NumButtons]bool
 	for {
 		floorSensorSignal = driver.Get_floor_sensor_signal()
 		for buttontype := 0; buttontype < 3; buttontype++ {
@@ -53,34 +60,32 @@ func Update_lights_orders(outgoingMsg chan def.Message) {
 				if driver.Get_button_signal(buttontype, floor) == 1 {
 					driver.Set_button_lamp(buttontype, floor, 1)
 
-					if !buttonState[floor][buttontype]{
+					if !buttonState[floor][buttontype] {
 
-						if(buttontype == def.BtnUp || buttontype == def.BtnDown){
-							msg := def.Message{Category: def.NewOrder, Floor: floor, Button: buttontype, Cost: queue.Cost(def.Orders,floor)}
+						if buttontype == def.BtnUp || buttontype == def.BtnDown {
+							msg := def.Message{Category: def.NewOrder, Floor: floor, Button: buttontype, Cost: -1}
 							outgoingMsg <- msg
 						} else {
-							//If the desired floor is under the elevator it is set as a order down
-							if floor < def.CurFloor{
-								def.Orders = queue.Update_orderlist(def.Orders,-floor)
-							}else {
-								def.Orders = queue.Update_orderlist(def.Orders,floor)
+							//Internal orders: if the desired floor is under the elevator it is set as a order down
+							fmt.Printf("Intern ordre mottat \n")
+							if floor < def.CurFloor {
+								def.Orders = queue.Update_orderlist(def.Orders, -floor)
+							} else {
+								def.Orders = queue.Update_orderlist(def.Orders, floor)
 							}
 						}
 					}
 					buttonState[floor][buttontype] = true
-				} else{
+				} else {
 					buttonState[floor][buttontype] = false
 				}
 
 				if floorSensorSignal != -1 {
 					def.CurFloor = floorSensorSignal
 					driver.Set_floor_indicator(def.CurFloor)
-					
+
 				}
 			}
 		}
 	}
 }
-
-
-
