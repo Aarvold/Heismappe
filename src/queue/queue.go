@@ -9,29 +9,32 @@ import (
 )
 
 func Append_and_sort_list(orderlist []int, newOrder int) []int {
-	orderlist = append(orderlist, newOrder)
-	sort.Ints(orderlist)
-	return orderlist
+	newOrderlist := append(orderlist, newOrder)
+	b := make([]int,len(newOrderlist))
+	copy(b[:],newOrderlist)
+
+	sort.Ints(b)
+
+	return newOrderlist
 }
 
-func Update_orderlist(orderlist []int, newOrder int, costfunction bool) []int {
-
+func Update_orderlist(neworderlist []int, newOrder int, costfunction bool) []int {
 	//fmt.Printf("pre orders in append = %v \n", def.Orders)
-
-	for j := 0; j < len(orderlist); j++ {
-		if orderlist[j] == newOrder {
-			fmt.Printf("Info from Update_orderlist: Orderto floor %d already ordered \n", newOrder)
-			return orderlist
+	copyOrderlist := neworderlist
+	for j := 0; j < len(copyOrderlist); j++ {
+		if copyOrderlist[j] == newOrder {
+			fmt.Printf("Info from Update_orderlist: Order to floor %d already ordered \n", newOrder)
+			return copyOrderlist
 		}
 	}
 
-	tempOrderlist := Append_and_sort_list(orderlist, newOrder)
+	tempOrderlist := Append_and_sort_list(copyOrderlist, newOrder)
 
 	var index = Get_element_index(tempOrderlist)
-	temp1 := tempOrderlist[:index]
-	temp2 := tempOrderlist[index:]
+	temp1 := tempOrderlist[index:]
+	temp2 := tempOrderlist[:index]
 
-	/*if def.CurDir == -1 { //&& (def.CurFloor < int(math.Abs(float64(newOrder)))) {
+	if def.CurDir == -1 { //&& (def.CurFloor < int(math.Abs(float64(newOrder)))) {
 		temp1 = tempOrderlist[index:]
 		temp2 = tempOrderlist[:index]
 		fmt.Printf("temp 1 = %v temp2 = %v tempOrderlist = %v \n", temp1, temp2, tempOrderlist)
@@ -40,7 +43,7 @@ func Update_orderlist(orderlist []int, newOrder int, costfunction bool) []int {
 		temp2 = tempOrderlist[index:]
 		fmt.Printf("temp 1 = %v temp2 = %v tempOrderlist = %v \n", temp1, temp2, tempOrderlist)
 	}
-	*/
+	
 
 	i := 0
 	for i < len(temp2) {
@@ -53,10 +56,7 @@ func Update_orderlist(orderlist []int, newOrder int, costfunction bool) []int {
 	//fmt.Printf("post orders in append = %v \n", def.Orders)
 
 	//midletidig fix fordi den fucker opp
-	if !costfunction {
-		fmt.Printf("!!!!!!!!!!!!!!!!!! Orders !!!!!!!!!!!!!!!!!!\n")
-		def.Orders = temp1
-	}
+
 	return temp1
 }
 
