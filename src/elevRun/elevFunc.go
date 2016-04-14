@@ -33,7 +33,7 @@ func Run_elev(outgoingMsg chan def.Message) {
 				driver.Set_door_open_lamp(0)
 				//Kjøre en func som setter motorDir her?
 				
-				sendCompleteMsg(def.Orders[0])
+				sendCompleteMsg(def.Orders[0],outgoingMsg)
 
 				//Removes the first element in def.Orders
 				//fmt.Printf("%sCurrent floor %d and orders[0] %d and orders = %v %s\n", def.Col0, def.CurFloor, def.Orders[0], def.Orders, def.ColN)
@@ -64,8 +64,8 @@ func atTopOrBottom(floorSensor int)bool{
 	return (floorSensor == 0) || (floorSensor == def.NumFloors-1)
 }
 
-func sendCompleteMsg(){
-	if def.Orders[0] < 0 {
+func sendCompleteMsg(order int,outgoingMsg chan def.Message){
+	if order < 0 {
 		msg := def.Message{Category: def.CompleteOrder, Floor: def.CurFloor, Button: def.BtnDown, Cost: -1}
 		outgoingMsg <- msg
 	} else {
@@ -73,6 +73,7 @@ func sendCompleteMsg(){
 		outgoingMsg <- msg
 	}
 }
+
 
 
 func Update_lights_orders(outgoingMsg chan def.Message) {
