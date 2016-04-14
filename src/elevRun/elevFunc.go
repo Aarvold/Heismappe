@@ -8,10 +8,10 @@ import (
 	"math"
 	"queue"
 	"time"
+
 )
 
 func Run_elev(outgoingMsg chan def.Message) {
-	var dir float64
 	driver.Elev_init()
 
 	for {
@@ -19,13 +19,14 @@ func Run_elev(outgoingMsg chan def.Message) {
 		if atTopOrBottom(floorSensor) {
 			def.CurDir = -def.CurDir
 		}
+		def.Mutex.Lock()
 		if (len(def.Orders) > 0) && (floorSensor != -1) {
 			
 			setDirection(def.Orders[0],def.CurFloor)
 
 			//def.CurFloor = driver.Get_floor_sensor_signal()
 			//Hvis heisen er på vei opp/ned og er i en etasje, så fucker den opp
-			if arrivedAtDestination() {
+			if arrivedAtDestination(floorSensor) {
 				//fmt.Printf("%sFloat cur floor = %v float def.Orders[0] = %v %s \n", def.ColY, float64(floorSensor), math.Abs(float64(def.Orders[0])), def.ColN)
 				driver.Set_motor_dir(0)
 				driver.Set_door_open_lamp(1)
@@ -41,22 +42,23 @@ func Run_elev(outgoingMsg chan def.Message) {
 				driver.Set_button_lamp(def.BtnInside, def.CurFloor, 0)
 
 				fmt.Printf("%sOrder deleted updated orderlist is %v %s \n", def.ColB, def.Orders, def.ColN)
-
 			}
 		}
+		def.Mutex.Unlock()
 	}
 }
 
-func setDirection(orders,curFloor int){
-	if (math.Abs(float64(orders[0])) - float64(curFloor)) != 0 {
+func setDirection(order,curFloor int){
+	//var dir float64
+	if (math.Abs(float64(order)) - float64(curFloor)) != 0 {
 		//difference divided with abs(difference) gives direction = -1 or 1
-		dir = (math.Abs(float64(orders[0])) - float64(curFloor)) / (float64(helpFunc.Difference_abs(orders[0], curFloor)))
+		dir := (math.Abs(float64(order)) - float64(curFloor)) / (float64(helpFunc.Difference_abs(order, curFloor)))
 		driver.Set_motor_dir(int(dir))
 		def.CurDir = int(dir)
 	}
 }
 
-func arrivedAtDestination()bool{
+func arrivedAtDestination(floorSensor int)bool{
 	return float64(floorSensor) == math.Abs(float64(def.Orders[0]))	
 }
 
@@ -111,12 +113,14 @@ func handleNewOrder(buttontype,floor int,outgoingMsg chan def.Message){
 	} else {
 		//Internal orders: if the desired floor is under the elevator it is set as a order down
 		//fmt.Printf("Intern ordre mottat \n")
+		def.Mutex.Lock()
 		if floor < def.CurFloor {
 			def.Orders = queue.Update_orderlist(def.Orders, -floor, false)
 		} else {
 			def.Orders = queue.Update_orderlist(def.Orders, floor, false)
 		}
 		fmt.Printf("%sInternal: Order list is updated to %v %s \n", def.ColR, def.Orders, def.ColN)
+		def.Mutex.Unlock()
 	}
 }
 

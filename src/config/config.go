@@ -2,6 +2,7 @@ package config
 
 import (
 	"os/exec"
+	"sync"
 )
 
 // Global system constants
@@ -26,6 +27,8 @@ var Laddr string
 var CurFloor int
 var CurDir int
 var Orders []int
+
+var Mutex = &sync.Mutex{}
 
 type Keypress struct {
 	Button int
