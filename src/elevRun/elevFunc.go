@@ -3,7 +3,7 @@ package elevRun
 import (
 	def "config"
 	"driver"
-	"fmt"
+	//"fmt"
 	"helpFunc"
 	"math"
 	"queue"
@@ -35,18 +35,15 @@ func Run_elev(outgoingMsg chan def.Message) {
 			def.CurDir = -def.CurDir
 		}
 		if (len(queue.Get_Orders()) > 0) && (floorSensor != -1) {
-			//var orders = queue.Get_Orders()
-			//fmt.Printf("Orders = %v \n",orders)
+
 			set_direction(queue.Get_Orders()[0],def.CurFloor)
 
-			//def.CurFloor = driver.Get_floor_sensor_signal()
-			//Hvis heisen er på vei opp/ned og er i en etasje, så fucker den opp
 			if arrived_at_destination() {
 				//fmt.Printf("%sFloat cur floor = %v float orders[0] = %v %s \n", def.ColY, float64(floorSensor), math.Abs(float64(def.Orders[0])), def.ColN)
 				
 				send_complete_msg(queue.Get_Orders()[0],outgoingMsg)
 				//Removes the first element in def.Orders
-				fmt.Printf("%sOrder to floor %d deleted, current floor = %d\n",def.ColB,queue.Get_Orders()[0],def.CurFloor)
+				//fmt.Printf("%sOrder to floor %d deleted, current floor = %d\n",def.ColB,queue.Get_Orders()[0],def.CurFloor)
 				queue.Set_Orders(append(queue.Get_Orders()[:0], queue.Get_Orders()[1:]...))
 				queue.Save_backup_to_file()
 				driver.Set_button_lamp(def.BtnInside, def.CurFloor, 0)
@@ -95,16 +92,16 @@ func send_complete_msg(order int,outgoingMsg chan def.Message){
 
 
 
-func Update_lights_orders(outgoingMsg chan def.Message) {
+func Handle_orders(outgoingMsg chan def.Message) {
 	var alreadyPushed [def.NumFloors][def.NumButtons]bool
 
 	for {
 		for buttontype := 0; buttontype < 3; buttontype++ {
 			for floor := 0; floor < def.NumFloors; floor++ {
 				if button_pushed(buttontype,floor) {
-					driver.Set_button_lamp(buttontype, floor, 1)
 
 					if !alreadyPushed[floor][buttontype] {
+						driver.Set_button_lamp(buttontype, floor, 1)
 						handle_new_order(buttontype,floor,outgoingMsg)
 					}
 					alreadyPushed[floor][buttontype] = true

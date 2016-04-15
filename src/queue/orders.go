@@ -1,9 +1,9 @@
 package queue
 
 import(
-	def"config"
+	//def"config"
 	"sync"
-	"fmt"
+	//"fmt"
 )
 
 var mutex = &sync.Mutex{}
@@ -23,5 +23,5 @@ func Set_Orders(newOrders []int){
 	copy(copyOrders[:],newOrders)
 	orders = copyOrders
 	mutex.Unlock()
-	fmt.Printf("%sOrder list is updated to %v \t current floor = %d \t cur dir = %d%s\n", def.ColR, Get_Orders(),def.CurFloor,def.CurDir, def.ColN)
+	//fmt.Printf("%sOrder list is updated to %v \t current floor = %d \t cur dir = %d%s\n", def.ColR, Get_Orders(),def.CurFloor,def.CurDir, def.ColN)
 }

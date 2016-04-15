@@ -43,7 +43,7 @@ func Update_orderlist(orderlist []int, newOrder int, costfunction bool) []int {
 		}
 		newOrders = append_list(newOrders,ordersDown)
 	}
-	
+
 	if def.CurDir == -1{
 		for _,orderDown := range ordersDown{
 			if -orderDown < def.CurFloor{
@@ -54,7 +54,7 @@ func Update_orderlist(orderlist []int, newOrder int, costfunction bool) []int {
 		}
 		newOrders = append_list(newOrders,ordersUp)
 	}
-	fmt.Printf("newOrders = %v\n",newOrders)
+	//fmt.Printf("newOrders = %v\n",newOrders)
 
 	return newOrders
 }

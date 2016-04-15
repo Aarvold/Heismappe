@@ -22,51 +22,49 @@ var outgoingMsg = make(chan def.Message, 10)
 var incomingMsg = make(chan def.Message, 10)
 var deadChan = make(chan network.UdpConnection)
 var costMsg = make(chan def.Message, 10)
+var quitChan = make(chan int)
 
 func main() {
 
 	elevRun.Elev_init()
-	go elevRun.Run_elev(outgoingMsg)
-	go elevRun.Update_lights_orders(outgoingMsg)
 	go network.Init(outgoingMsg, incomingMsg)
+
+	go elevRun.Run_elev(outgoingMsg)
+	go elevRun.Handle_orders(outgoingMsg)
+
 	go assign_external_order(costMsg)
+	go handle_msg(incomingMsg, outgoingMsg, costMsg)
 
-	go func() {
-		for {
-			msg := <-incomingMsg
-			handle_msg(msg, outgoingMsg, costMsg)
-		}
-	}()
+	go Quit_program(quitChan)
 
-	quit := make(chan int)
-	go Quit_program(quit)
-
-	<-quit
+	<-quitChan
 }
 
-func handle_msg(msg def.Message, outgoingMsg, costMsg chan def.Message) {
-	const aliveTimeout = 2 * time.Second
+func handle_msg(incomingMsg, outgoingMsg, costMsg chan def.Message) {
+	for {
+		msg := <-incomingMsg
+		const aliveTimeout = 2 * time.Second
+		switch msg.Category {
+		case def.Alive:
+			//if connection exists
+			if connection, exist := onlineElevs[msg.Addr]; exist{
+				connection.Timer.Reset(aliveTimeout)
+			} else {
+				add_new_connection(msg.Addr,aliveTimeout)
+			}
+		case def.NewOrder:
+			//fmt.Printf("%sNew external order recieved to floor %d %s \n", def.ColM, helpFunc.Order_dir(msg.Floor, msg.Button), def.ColN)
+			driver.Set_button_lamp(msg.Button, msg.Floor, 1)
+			costMsg := def.Message{Category: def.Cost, Floor: msg.Floor, Button: msg.Button, Cost: queue.Cost(queue.Get_Orders(), helpFunc.Order_dir(msg.Floor, msg.Button))}
+			outgoingMsg <- costMsg
 
-	switch msg.Category {
-	case def.Alive:
-		//if connection exists
-		if connection, exist := onlineElevs[msg.Addr]; exist{
-			connection.Timer.Reset(aliveTimeout)
-		} else {
-			add_new_connection(msg.Addr,aliveTimeout)
+		case def.CompleteOrder:
+			driver.Set_button_lamp(msg.Button, msg.Floor, 0)
+
+		case def.Cost:
+			//see assign_external_order
+			costMsg <- msg
 		}
-	case def.NewOrder:
-		fmt.Printf("%sNew order external recieved to floor %d %s \n", def.ColM, helpFunc.Order_dir(msg.Floor, msg.Button), def.ColN)
-		driver.Set_button_lamp(msg.Button, msg.Floor, 1)
-		costMsg := def.Message{Category: def.Cost, Floor: msg.Floor, Button: msg.Button, Cost: queue.Cost(queue.Get_Orders(), helpFunc.Order_dir(msg.Floor, msg.Button))}
-		outgoingMsg <- costMsg
-
-	case def.CompleteOrder:
-		driver.Set_button_lamp(msg.Button, msg.Floor, 0)
-
-	case def.Cost:
-		//see assign_external_order
-		costMsg <- msg
 	}
 }
 
@@ -114,21 +112,19 @@ func assign_external_order(costMsg chan def.Message) {
 			
 			if costList, exist := rcvList[newOrder]; exist {
 				if !cost_already_recieved(newCost,costList) {
-					//fmt.Printf("Her blir det lagt tin en cost\n")
 					rcvList[newOrder] = append(rcvList[newOrder], newCost)
 				}
 			} else {
 				newOrder.timer = time.NewTimer(timeoutDuration)
-				//fmt.Printf("Her blir en ordre med cost lagt til for forste gang\n")
 				rcvList[newOrder] = []rcvCost{newCost}
 				go cost_timer(newOrder, overtime)
 			}
-			//fmt.Printf("%sLen rcvlst = %d and numOnlElev = %d %s\n", def.ColM, len(rcvList[newOrder]), numOfOnlineElevs, def.ColN)
+
 			if  all_costs_recieved(rcvList,newOrder) {
 				add_new_order(rcvList,newOrder)
 				delete(rcvList, newOrder)
 				newOrder.timer.Stop()
-				//fjerne ordren fra listen
+
 			}
 		case newOrder := <-overtime:
 			fmt.Print("Assign order timeout: Did not recieve all replies before timeout\n")
@@ -140,7 +136,9 @@ func assign_external_order(costMsg chan def.Message) {
 
 func add_new_order(rcvList map[rcvOrder][]rcvCost, newOrder rcvOrder){
 	if this_elevator_has_the_lowest_cost(rcvList[newOrder]) {
+		fmt.Printf("%sNew order added to floor = %d with cost = %d\n%s",def.ColY,helpFunc.Order_dir(newOrder.floor,newOrder.button),queue.Cost(queue.Get_Orders(),helpFunc.Order_dir(newOrder.floor,newOrder.button)),def.ColN)
 		queue.Set_Orders(queue.Update_orderlist(queue.Get_Orders(), helpFunc.Order_dir(newOrder.floor, newOrder.button), false))
+		fmt.Printf("%sUpdated orders = %v\n%s\n",def.ColY,queue.Get_Orders(),def.ColN)
 		queue.Save_backup_to_file()		
 	}
 }
@@ -190,7 +188,13 @@ func this_elevator_has_the_lowest_cost(listOfCosts []rcvCost) bool {
 
 func connection_timer(connection *network.UdpConnection) {
 	<-connection.Timer.C
-	deadChan <- *connection
+	deadChan<- *connection
+}
+
+func chan_died(deadChan chan network.UdpConnection){
+	fmt.Printf("Elevator with IP:%d died\n", connection.Addr)
+	connection := <- deadChan
+	
 }
 
 func Quit_program(quit chan int) {

@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"time"
+	"log"
 )
 
 type UdpConnection struct {
@@ -62,7 +63,7 @@ func udpInit(localListenPort, broadcastListenPort, message_size int, send_ch, re
 func udp_transmit_server(lconn, bconn *net.UDPConn, send_ch <-chan udpMessage) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_transmit_server: %s \n Closing connection.", r)
+			log.Println("ERROR in udp_transmit_server: %s \n Closing connection.", r)
 			lconn.Close()
 			bconn.Close()
 		}
