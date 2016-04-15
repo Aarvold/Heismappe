@@ -8,79 +8,96 @@ import (
 	"sort"
 )
 
-func Append_and_sort_list(orderlist []int, newOrder int) []int {
+
+func append_and_sort_list(orderlist []int, newOrder int) []int {
 	newOrderlist := append(orderlist, newOrder)
-	b := make([]int,len(newOrderlist))
-	copy(b[:],newOrderlist)
-
-	sort.Ints(b)
-
-	return newOrderlist
+	copyOrderlist := make([]int,len(newOrderlist))
+	copy(copyOrderlist[:],newOrderlist)
+	sort.Ints(copyOrderlist)
+	return copyOrderlist
 }
 
-func Update_orderlist(neworderlist []int, newOrder int, costfunction bool) []int {
-	//fmt.Printf("pre orders in append = %v \n", def.Orders)
-	copyOrderlist := neworderlist
-	for j := 0; j < len(copyOrderlist); j++ {
-		if copyOrderlist[j] == newOrder {
-			fmt.Printf("Info from Update_orderlist: Order to floor %d already ordered \n", newOrder)
-			return copyOrderlist
-		}
+func Update_orderlist(orderlist []int, newOrder int, costfunction bool) []int {
+	//fmt.Printf("pre orders in append = %v \n", Get_Orders())
+	copyOrderlist := orderlist
+
+	if order_exists(copyOrderlist,newOrder){
+		fmt.Printf("Info from Update_orderlist: Order to floor %d already ordered \n", newOrder)
+		return copyOrderlist
 	}
 
-	tempOrderlist := Append_and_sort_list(copyOrderlist, newOrder)
+	tempOrderlist := append_and_sort_list(copyOrderlist, newOrder)
 
-	var index = Get_element_index(tempOrderlist)
-	temp1 := tempOrderlist[index:]
-	temp2 := tempOrderlist[:index]
+	ordersDown := get_orders_down(tempOrderlist)
+	ordersUp := get_orders_up(tempOrderlist)
 
-	if def.CurDir == -1 { //&& (def.CurFloor < int(math.Abs(float64(newOrder)))) {
-		temp1 = tempOrderlist[index:]
-		temp2 = tempOrderlist[:index]
-		fmt.Printf("temp 1 = %v temp2 = %v tempOrderlist = %v \n", temp1, temp2, tempOrderlist)
-	} else {
-		temp1 = tempOrderlist[:index]
-		temp2 = tempOrderlist[index:]
-		fmt.Printf("temp 1 = %v temp2 = %v tempOrderlist = %v \n", temp1, temp2, tempOrderlist)
+	var newOrders []int
+
+	if def.CurDir >= 0{
+		for _,orderUp := range ordersUp{
+			if orderUp > def.CurFloor{
+				newOrders = append(newOrders,orderUp)
+			}else {
+				ordersDown = append(ordersDown,orderUp)
+			}
+		}
+		newOrders = append_list(newOrders,ordersDown)
 	}
 	
+	if def.CurDir == -1{
+		for _,orderDown := range ordersDown{
+			if -orderDown < def.CurFloor{
+				newOrders = append(newOrders,orderDown)
+			}else {
+				ordersUp = append(ordersUp,orderDown)
+			}
+		}
+		newOrders = append_list(newOrders,ordersUp)
+	}
+	fmt.Printf("newOrders = %v\n",newOrders)
 
+	return newOrders
+}
+
+func get_orders_up(orderlist []int)[]int{
+	var posOrders []int
+	for _,order := range orderlist{
+		if order >= 0 {
+			posOrders = append(posOrders, order)
+		}
+	}
+	return posOrders
+}
+
+func get_orders_down(orderlist []int)[]int{
+	var negOrders []int
+	for _,order := range orderlist{
+		if order < 0 {
+			negOrders = append(negOrders, order)
+		}
+	}
+	return negOrders
+}
+
+func append_list(temp1,temp2 []int)[]int{
 	i := 0
 	for i < len(temp2) {
 		temp1 = append(temp1, temp2[i])
 		i++
 	}
-	fmt.Printf("temp1 etter for loop = %v \n ", temp1)
-	//orderlist = temp1
-
-	//fmt.Printf("post orders in append = %v \n", def.Orders)
-
-	//midletidig fix fordi den fucker opp
-
 	return temp1
 }
 
-func Get_element_index(orderlist []int) int {
-	nextFloor := def.CurFloor
-	if def.CurDir == -1 {
-		//fmt.Printf("asfefaef\n")
-		nextFloor = def.CurFloor - 1
-	}
-
-	//fmt.Printf("%sCurrent dir = %d %s \n", def.ColB, def.CurDir, def.ColN)
-	orderNumber := def.CurDir * nextFloor
-	var index = 0
-	//må sjekkes
-	for {
-		if orderlist[index] > orderNumber {
-			return index
+func order_exists(copyOrderlist []int,newOrder int)bool{
+	for j := 0; j < len(copyOrderlist); j++ {
+		if copyOrderlist[j] == newOrder {
+			return true
 		}
-		if index == len(orderlist)-1 {
-			return index
-		}
-		index++
 	}
+	return false
 }
+
+
 
 func Get_index(orderlist []int, new_order int) int {
 	orderlist_length := len(orderlist)
@@ -92,12 +109,11 @@ func Get_index(orderlist []int, new_order int) int {
 		}
 		i++
 	}
-	fmt.Print("Error in Get_index")
+	fmt.Print("Error in Get_index\n")
 	return -1
 }
 
 func Cost(orderlist []int, newOrder int) int {
-	//fmt.Printf("pre orders in cost = %v \n", def.Orders)
 	new_orderlist := Update_orderlist(orderlist, newOrder, true)
 	index := Get_index(new_orderlist, newOrder)
 	//fmt.Print(index)
@@ -110,6 +126,5 @@ func Cost(orderlist []int, newOrder int) int {
 			cost += helpFunc.Difference_abs(orderlist[i], orderlist[i+1])
 		}
 	}
-	//fmt.Printf("post orders in cost = %v \n", def.Orders)
-	return int(cost) + 2*len(def.Orders)
+	return int(cost) + 2*len(Get_Orders())
 }

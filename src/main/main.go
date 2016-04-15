@@ -15,8 +15,6 @@ import (
 
 )
 
-
-
 var onlineElevs = make(map[string]network.UdpConnection)
 var numOfOnlineElevs int
 
@@ -27,6 +25,7 @@ var costMsg = make(chan def.Message, 10)
 
 func main() {
 
+	elevRun.Elev_init()
 	go elevRun.Run_elev(outgoingMsg)
 	go elevRun.Update_lights_orders(outgoingMsg)
 	go network.Init(outgoingMsg, incomingMsg)
@@ -54,15 +53,12 @@ func handle_msg(msg def.Message, outgoingMsg, costMsg chan def.Message) {
 		if connection, exist := onlineElevs[msg.Addr]; exist{
 			connection.Timer.Reset(aliveTimeout)
 		} else {
-			addNewConnection(msg.Addr,aliveTimeout)
+			add_new_connection(msg.Addr,aliveTimeout)
 		}
 	case def.NewOrder:
-		fmt.Printf("%sNew order external recieved to floor %d %s \n", def.ColM, msg.Floor, def.ColN)
+		fmt.Printf("%sNew order external recieved to floor %d %s \n", def.ColM, helpFunc.Order_dir(msg.Floor, msg.Button), def.ColN)
 		driver.Set_button_lamp(msg.Button, msg.Floor, 1)
-		def.Mutex.Lock()
-		temp := def.Orders
-		def.Mutex.Unlock()
-		costMsg := def.Message{Category: def.Cost, Floor: msg.Floor, Button: msg.Button, Cost: queue.Cost(temp, helpFunc.Order_dir(msg.Floor, msg.Button))}
+		costMsg := def.Message{Category: def.Cost, Floor: msg.Floor, Button: msg.Button, Cost: queue.Cost(queue.Get_Orders(), helpFunc.Order_dir(msg.Floor, msg.Button))}
 		outgoingMsg <- costMsg
 
 	case def.CompleteOrder:
@@ -76,11 +72,11 @@ func handle_msg(msg def.Message, outgoingMsg, costMsg chan def.Message) {
 
 
 
-func addNewConnection(addr string, aliveTimeout time.Duration){
+func add_new_connection(addr string, aliveTimeout time.Duration){
 	newConnection := network.UdpConnection{addr, time.NewTimer(aliveTimeout)}
 	onlineElevs[addr] = newConnection
 	numOfOnlineElevs = len(onlineElevs)
-	go connectionTimer(&newConnection)
+	go connection_timer(&newConnection)
 	fmt.Printf("%sConnection to IP %s established!%s\n", def.ColG, addr[0:15], def.ColN)
 }
 
@@ -117,7 +113,7 @@ func assign_external_order(costMsg chan def.Message) {
 			}
 			
 			if costList, exist := rcvList[newOrder]; exist {
-				if !costAlreadyRecieved(newCost,costList) {
+				if !cost_already_recieved(newCost,costList) {
 					//fmt.Printf("Her blir det lagt tin en cost\n")
 					rcvList[newOrder] = append(rcvList[newOrder], newCost)
 				}
@@ -125,37 +121,35 @@ func assign_external_order(costMsg chan def.Message) {
 				newOrder.timer = time.NewTimer(timeoutDuration)
 				//fmt.Printf("Her blir en ordre med cost lagt til for forste gang\n")
 				rcvList[newOrder] = []rcvCost{newCost}
-				go costTimer(newOrder, overtime)
+				go cost_timer(newOrder, overtime)
 			}
 			//fmt.Printf("%sLen rcvlst = %d and numOnlElev = %d %s\n", def.ColM, len(rcvList[newOrder]), numOfOnlineElevs, def.ColN)
-			if  allCostsRecieved(rcvList,newOrder) {
-				addNewOrder(rcvList,newOrder)
+			if  all_costs_recieved(rcvList,newOrder) {
+				add_new_order(rcvList,newOrder)
 				delete(rcvList, newOrder)
 				newOrder.timer.Stop()
 				//fjerne ordren fra listen
 			}
 		case newOrder := <-overtime:
 			fmt.Print("Assign order timeout: Did not recieve all replies before timeout\n")
-			addNewOrder(rcvList,newOrder)
+			add_new_order(rcvList,newOrder)
 			delete(rcvList, newOrder)
 		}
 	}
 }
 
-func addNewOrder(rcvList map[rcvOrder][]rcvCost, newOrder rcvOrder){
+func add_new_order(rcvList map[rcvOrder][]rcvCost, newOrder rcvOrder){
 	if this_elevator_has_the_lowest_cost(rcvList[newOrder]) {
-		def.Mutex.Lock()
-		def.Orders = queue.Update_orderlist(def.Orders, helpFunc.Order_dir(newOrder.floor, newOrder.button), false)
-		fmt.Printf("%sExternal: Order list is updated to %v %s \n", def.ColR, def.Orders, def.ColN)
-		def.Mutex.Unlock()
+		queue.Set_Orders(queue.Update_orderlist(queue.Get_Orders(), helpFunc.Order_dir(newOrder.floor, newOrder.button), false))
+		queue.Save_backup_to_file()		
 	}
 }
 
-func allCostsRecieved(rcvList map[rcvOrder][]rcvCost,newOrder rcvOrder)bool{
+func all_costs_recieved(rcvList map[rcvOrder][]rcvCost,newOrder rcvOrder)bool{
 	return len(rcvList[newOrder]) == numOfOnlineElevs
 }
 
-func costAlreadyRecieved(newCost rcvCost,costList []rcvCost)bool{
+func cost_already_recieved(newCost rcvCost,costList []rcvCost)bool{
 	for _, adr := range costList {
 		if newCost.elevAddr == adr.elevAddr {
 			return  true
@@ -164,7 +158,7 @@ func costAlreadyRecieved(newCost rcvCost,costList []rcvCost)bool{
 	return false
 }
 
-func costTimer(newOrder rcvOrder, overtime chan<- rcvOrder) {
+func cost_timer(newOrder rcvOrder, overtime chan<- rcvOrder) {
 	<-newOrder.timer.C
 	overtime <- newOrder
 }
@@ -194,7 +188,7 @@ func this_elevator_has_the_lowest_cost(listOfCosts []rcvCost) bool {
 	}
 }
 
-func connectionTimer(connection *network.UdpConnection) {
+func connection_timer(connection *network.UdpConnection) {
 	<-connection.Timer.C
 	deadChan <- *connection
 }
@@ -203,8 +197,8 @@ func Quit_program(quit chan int) {
 	for {
 		time.Sleep(time.Second)
 		if driver.Get_stop_signal() == 1 {
-			quit <- 1
 			driver.Set_motor_dir(0)
+			quit <- 1
 		}
 	}
 }

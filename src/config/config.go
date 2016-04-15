@@ -2,12 +2,12 @@ package config
 
 import (
 	"os/exec"
-	"sync"
 )
 
 // Global system constants
 const NumButtons = 3
 const NumFloors = 4
+const BackupFileName = "orderBackup"
 
 const (
 	BtnUp int = iota
@@ -26,9 +26,7 @@ var Laddr string
 
 var CurFloor int
 var CurDir int
-var Orders []int
 
-var Mutex = &sync.Mutex{}
 
 type Keypress struct {
 	Button int

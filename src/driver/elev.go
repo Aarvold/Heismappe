@@ -15,13 +15,6 @@ const N_floors int = int(C.N_FLOORS)
 
 func Elev_init() {
 	C.elev_init()
-	Set_motor_dir(-1)
-	defer Set_motor_dir(0)
-	for {
-		if Get_floor_sensor_signal() != -1 {
-			return
-		}
-	}
 }
 
 func Set_motor_dir(dirn int) {
