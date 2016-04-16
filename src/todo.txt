@@ -1,4 +1,0 @@
-
-
-
- - Fikse interne bestillinger i Update_lights

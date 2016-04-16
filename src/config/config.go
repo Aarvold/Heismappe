@@ -1,12 +1,9 @@
 package config
 
-import (
-	"os/exec"
-)
-
 // Global system constants
 const NumButtons = 3
 const NumFloors = 4
+const BackupFileName = "orderBackup"
 
 const (
 	BtnUp int = iota
@@ -22,15 +19,6 @@ const (
 
 // Local IP address
 var Laddr string
-
-var CurFloor int
-var CurDir int
-var Orders []int
-
-type Keypress struct {
-	Button int
-	Floor  int
-}
 
 // Generic network message. No other messages are ever sent on the network.
 type Message struct {
@@ -48,12 +36,6 @@ const (
 	CompleteOrder
 	Cost
 )
-
-var SyncLightsChan = make(chan bool)
-var CloseConnectionChan = make(chan bool)
-
-// Start a new terminal when restart.Run()
-var Restart = exec.Command("gnome-terminal", "-x", "sh", "-c", "main")
 
 // Colours for printing to console
 const Col0 = "\x1b[30;1m" // Dark grey

@@ -11,17 +11,15 @@ const (
 	BUTTON_CALL_DOWN
 	BUTTON_COMMAND
 )
+
 const N_floors int = int(C.N_FLOORS)
+
+var curFloor int
+var curDir int
+
 
 func Elev_init() {
 	C.elev_init()
-	Set_motor_dir(-1)
-	defer Set_motor_dir(0)
-	for {
-		if Get_floor_sensor_signal() != -1 {
-			return
-		}
-	}
 }
 
 func Set_motor_dir(dirn int) {
@@ -36,9 +34,8 @@ func Set_floor_indicator(floor int) {
 	C.elev_set_floor_indicator(C.int(floor))
 }
 
-//value er litt dårlig navn
-func Set_door_open_lamp(value int) {
-	C.elev_set_door_open_lamp(C.int(value))
+func Set_door_open_lamp(floor int) {
+	C.elev_set_door_open_lamp(C.int(floor))
 }
 
 func Set_stop_lamp(value int) {
@@ -55,4 +52,20 @@ func Get_floor_sensor_signal() int {
 
 func Get_stop_signal() int {
 	return int(C.elev_get_stop_signal())
+}
+
+func Get_cur_floor()int{
+	return curFloor
+}
+
+func Set_cur_floor(newCurFloor int){
+	curFloor = newCurFloor
+}
+
+func Get_dir()int{
+	return curDir
+}
+
+func Set_dir(newDir int){
+	curDir = newDir
 }
