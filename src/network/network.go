@@ -12,14 +12,15 @@ func Init(outgoingMsg, incomingMsg chan def.Message) {
 	// Ports randomly chosen to reduce likelihood of port collision.
 	const localListenPort = 37203
 	const broadcastListenPort = 37204
-
 	const messageSize = 1024
+
+	def.ImConnected = true
 
 	var udpSend = make(chan udpMessage)
 	var udpReceive = make(chan udpMessage, 10)
 	err := udpInit(localListenPort, broadcastListenPort, messageSize, udpSend, udpReceive)
 	if err != nil {
-		fmt.Print("UdpInit() error: %v \n", err)
+		log.Print("UdpInit() error: %v \n", err)
 	}
 
 	go aliveSpammer(outgoingMsg)

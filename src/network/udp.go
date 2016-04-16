@@ -22,21 +22,25 @@ type udpMessage struct {
 	length int //length of received data, in #bytes // N/A for sending
 }
 
+var closeConnectionChan = make(chan bool)
+
 func udpInit(localListenPort, broadcastListenPort, message_size int, send_ch, receive_ch chan udpMessage) (err error) {
 	//Generating broadcast address
 	baddr, err = net.ResolveUDPAddr("udp4", "255.255.255.255:"+strconv.Itoa(broadcastListenPort))
 	if err != nil {
 		return err
 	}
-
 	//Generating localaddressudpSend
 	tempConn, err := net.DialUDP("udp4", nil, baddr)
+	if err != nil {
+		def.ImConnected = false
+		return err
+	}
 	defer tempConn.Close()
 	tempAddr := tempConn.LocalAddr()
 	laddr, err := net.ResolveUDPAddr("udp4", tempAddr.String())
 	laddr.Port = localListenPort
 	def.Laddr = laddr.String()
-
 
 	//Creating local listening connections
 	localListenConn, err := net.ListenUDP("udp4", laddr)
@@ -50,7 +54,6 @@ func udpInit(localListenPort, broadcastListenPort, message_size int, send_ch, re
 		localListenConn.Close()
 		return err
 	}
-
 	go udp_receive_server(localListenConn, broadcastListenConn, message_size, receive_ch)
 	go udp_transmit_server(localListenConn, broadcastListenConn, send_ch)
 	go udp_connection_closer(localListenConn, broadcastListenConn)
@@ -64,8 +67,7 @@ func udp_transmit_server(lconn, bconn *net.UDPConn, send_ch <-chan udpMessage) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("ERROR in udp_transmit_server: %s \n Closing connection.", r)
-			lconn.Close()
-			bconn.Close()
+			closeConnectionChan <- true
 		}
 	}()
 
@@ -98,8 +100,7 @@ func udp_receive_server(lconn, bconn *net.UDPConn, message_size int, receive_ch 
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("ERROR in udp_receive_server: %s \n Closing connection.", r)
-			lconn.Close()
-			bconn.Close()
+			closeConnectionChan <- true
 		}
 	}()
 
@@ -124,7 +125,7 @@ func udp_receive_server(lconn, bconn *net.UDPConn, message_size int, receive_ch 
 func udp_connection_reader(conn *net.UDPConn, message_size int, rcv_ch chan<- udpMessage) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_connection_reader: %s \n Closing connection.", r)
+			log.Println("ERROR in udp_connection_reader: %s \n Closing connection.", r)
 			conn.Close()
 		}
 	}()
@@ -143,7 +144,9 @@ func udp_connection_reader(conn *net.UDPConn, message_size int, rcv_ch chan<- ud
 }
 
 func udp_connection_closer(lconn, bconn *net.UDPConn) {
-	<-def.CloseConnectionChan
+	<-closeConnectionChan
+	def.ImConnected = false
+	fmt.Printf("%sDisconnected \n%s",def.ColR,def.ColN)
 	lconn.Close()
 	bconn.Close()
 }

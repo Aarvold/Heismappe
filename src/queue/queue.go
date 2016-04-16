@@ -6,8 +6,28 @@ import (
 	"helpFunc"
 	//"math"
 	"sort"
+	"sync"
 )
 
+var mutex = &sync.Mutex{}
+var orders []int
+
+func Get_Orders()[]int{
+	mutex.Lock()
+	copyOrders := make([]int,len(orders))
+	copy(copyOrders[:],orders)
+	mutex.Unlock()
+	return copyOrders
+}
+
+func Set_Orders(newOrders []int){
+	mutex.Lock()
+	copyOrders := make([]int,len(newOrders))
+	copy(copyOrders[:],newOrders)
+	orders = copyOrders
+	mutex.Unlock()
+	//fmt.Printf("%sOrder list is updated to %v \t current floor = %d \t cur dir = %d%s\n", def.ColR, Get_Orders(),def.CurFloor,def.CurDir, def.ColN)
+}
 
 func append_and_sort_list(orderlist []int, newOrder int) []int {
 	newOrderlist := append(orderlist, newOrder)
@@ -96,7 +116,6 @@ func order_exists(copyOrderlist []int,newOrder int)bool{
 	}
 	return false
 }
-
 
 
 func Get_index(orderlist []int, new_order int) int {
