@@ -31,12 +31,6 @@ func Set_Orders(orderlist []int){
 	//fmt.Printf("%sOrder list is updated to %v \t current floor = %d \t cur dir = %d%s\n", def.ColR, Get_Orders(),driver.Get_cur_floor(),driver.Get_dir(), def.ColN)
 }
 
-func append_and_sort_list(orderlist []int, newOrder int) []int {
-	newOrderlist := append(orderlist, newOrder)
-	sort.Ints(newOrderlist)
-	return newOrderlist
-}
-
 func Update_orderlist(orderlist []int, newOrder int) []int {
 
 	if order_exists(orderlist,newOrder){
@@ -74,6 +68,12 @@ func Update_orderlist(orderlist []int, newOrder int) []int {
 	}
 
 	return updatedOrderlist
+}
+
+func append_and_sort_list(orderlist []int, newOrder int) []int {
+	newOrderlist := append(orderlist, newOrder)
+	sort.Ints(newOrderlist)
+	return newOrderlist
 }
 
 func get_orders_up(orderlist []int)[]int{

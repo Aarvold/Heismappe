@@ -4,7 +4,6 @@ import (
 	def"config"
 	"queue"
 	"driver"
-	//"fmt"
 )
 
 var NumOfOnlineElevs int
@@ -28,7 +27,7 @@ func Handle_orders(outgoingMsg, incomingMsg, costMsg, orderIsCompleted chan def.
 						handle_new_order(buttontype,floor,outgoingMsg)
 					}
 					buttonAlreadyPushed[floor][buttontype] = true
-					
+
 				} else {
 					buttonAlreadyPushed[floor][buttontype] = false	
 				}

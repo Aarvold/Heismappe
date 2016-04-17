@@ -34,9 +34,6 @@ func Run_elev(outgoingMsg chan def.Message) {
 
 		update_current_floor()
 
-		if at_top_or_bottom(driver.Get_cur_floor()) {
-			driver.Set_dir(-driver.Get_dir())
-		}
 		//If we have orders and we are not between floors
 		if (len(queue.Get_Orders()) > 0) && (driver.Get_cur_floor() != -1) {
 			set_direction(queue.Get_Orders()[0],driver.Get_cur_floor())
@@ -84,10 +81,6 @@ func set_direction(order,curFloor int){
 
 func arrived_at_destination()bool{
 	return driver.Get_cur_floor() == int(math.Abs(float64(queue.Get_Orders()[0])))	
-}
-
-func at_top_or_bottom(floorSensor int)bool{
-	return (floorSensor == 0) || (floorSensor == def.NumFloors-1)
 }
 
 func send_order_complete_msg(order int,outgoingMsg chan def.Message){
