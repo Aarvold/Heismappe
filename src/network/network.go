@@ -28,12 +28,12 @@ func Init(outgoingMsg, incomingMsg chan def.Message) {
 	go forwardOutgoing(outgoingMsg, udpSend)
 	go forwardIncoming(incomingMsg, udpReceive)
 
-	log.Println(def.ColG, "Network successfully initialised", def.ColN)
+	fmt.Println(def.ColG, "Network successfully initialised", def.ColN)
 }
 
 // Periodically notifyes other elevators that this is elevator is alive
 func aliveSpammer(outgoingMsg chan<- def.Message) {
-	const spamInterval = 4000 * time.Millisecond
+	const spamInterval = 2000 * time.Millisecond
 	alive := def.Message{Category: def.Alive, Floor: -1, Button: -1, Cost: -1}
 	for {
 		outgoingMsg <- alive

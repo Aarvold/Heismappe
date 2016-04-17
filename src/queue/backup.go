@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"fmt"
 )
 
 
@@ -42,7 +43,7 @@ func (q *backupQueue) save_to_file(filename string) error {
 
 func (q *backupQueue) load_from_file(filename string) error {
 	if _, err := os.Stat(filename); err == nil {
-		log.Println(def.ColG, "Backup file found, content uploaded", def.ColN)
+		fmt.Println(def.ColG,"Backup file found, content uploaded", def.ColN)
 
 		data, err := ioutil.ReadFile(filename)
 		if err != nil {

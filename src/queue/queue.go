@@ -1,7 +1,7 @@
 package queue
 
 import (
-	//def"config"
+	def"config"
 	//"fmt"
 	"helpFunc"
 	"sort"
@@ -9,22 +9,23 @@ import (
 	"driver"
 )
 
-var mutex = &sync.Mutex{}
+// orders contains all orders and is sorted with next floor at orders[0]
+// orders down will have a negative value and orders up will have a positive value
 var orders []int
+var mutex = &sync.Mutex{}
 
 func Get_Orders()[]int{
 	mutex.Lock()
 	copyOrders := make([]int,len(orders))
 	copy(copyOrders[:],orders)
 	mutex.Unlock()
-
 	return copyOrders
 }
 
-func Set_Orders(newOrders []int){
+func Set_Orders(orderlist []int){
 	mutex.Lock()
-	copyOrders := make([]int,len(newOrders))
-	copy(copyOrders[:],newOrders)
+	copyOrders := make([]int,len(orderlist))
+	copy(copyOrders[:], orderlist)
 	orders = copyOrders
 	mutex.Unlock()
 	//fmt.Printf("%sOrder list is updated to %v \t current floor = %d \t cur dir = %d%s\n", def.ColR, Get_Orders(),driver.Get_cur_floor(),driver.Get_dir(), def.ColN)
@@ -43,35 +44,36 @@ func Update_orderlist(orderlist []int, newOrder int) []int {
 	}
 
 	tempOrderlist := append_and_sort_list(orderlist, newOrder)
-
+	// Split up the orderlist in orders up and down
 	ordersDown := get_orders_down(tempOrderlist)
 	ordersUp := get_orders_up(tempOrderlist)
 
-	var newOrders []int
+	var updatedOrderlist []int
 
+	// These two conditions updates the orders based on the elevators direction and current floor
 	if driver.Get_dir() >= 0{
 		for _,orderUp := range ordersUp{
 			if orderUp > driver.Get_cur_floor(){
-				newOrders = append(newOrders,orderUp)
+				updatedOrderlist = append(updatedOrderlist, orderUp)
 			}else {
-				ordersDown = append(ordersDown,orderUp)
+				ordersDown = append(ordersDown, orderUp)
 			}
 		}
-		newOrders = helpFunc.Append_list(newOrders,ordersDown)
+		updatedOrderlist = helpFunc.Append_list(updatedOrderlist, ordersDown)
 	}
 
 	if driver.Get_dir() == -1{
 		for _,orderDown := range ordersDown{
 			if -orderDown < driver.Get_cur_floor(){
-				newOrders = append(newOrders,orderDown)
+				updatedOrderlist = append(updatedOrderlist, orderDown)
 			}else {
-				ordersUp = append(ordersUp,orderDown)
+				ordersUp = append(ordersUp, orderDown)
 			}
 		}
-		newOrders = helpFunc.Append_list(newOrders,ordersUp)
+		updatedOrderlist = helpFunc.Append_list(updatedOrderlist, ordersUp)
 	}
 
-	return newOrders
+	return updatedOrderlist
 }
 
 func get_orders_up(orderlist []int)[]int{
@@ -94,7 +96,6 @@ func get_orders_down(orderlist []int)[]int{
 	return negOrders
 }
 
-
 func order_exists(list []int,order int)bool{
 	for j := 0; j < len(list); j++ {
 		if list[j] == order {
@@ -104,8 +105,14 @@ func order_exists(list []int,order int)bool{
 	return false
 }
 
-
-func Remove_first_element_in_orders_and_save(){
+func Remove_first_element_in_orders(){
 	Set_Orders(append(Get_Orders()[:0], Get_Orders()[1:]...))
-	Save_backup_to_file()
+}
+
+func Order_direction(floor,button int)int{
+	if button == def.BtnDown{
+		return -floor
+	}else{
+		return floor
+	}
 }

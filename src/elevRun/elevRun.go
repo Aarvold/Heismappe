@@ -14,7 +14,7 @@ import (
 
 
 func Elev_init(){
-	fmt.Printf("%sInitialising elevator...%s\n", def.ColG, def.ColN)
+	fmt.Printf("%sInitialising elevator, please wait...%s\n", def.ColG, def.ColN)
 	driver.Elev_init()
 	driver.Set_motor_dir(-1)
 	defer driver.Set_motor_dir(0)
@@ -45,14 +45,15 @@ func Run_elev(outgoingMsg chan def.Message) {
 				driver.Set_motor_dir(0)
 
 				if handleOrders.ImConnected{
-					send_complete_msg(queue.Get_Orders()[0],outgoingMsg)
+					send_order_complete_msg(queue.Get_Orders()[0],outgoingMsg)
 				}else{
 					turn_off_lights()
 				}
 				//fmt.Printf("%sOrder to floor %d deleted, current floor = %d\n",def.ColB,queue.Get_Orders()[0],driver.Get_cur_floor())
-				queue.Remove_first_element_in_orders_and_save()
+				queue.Remove_first_element_in_orders()
+				queue.Save_backup_to_file()
 				driver.Set_button_lamp(def.BtnInside, driver.Get_cur_floor(), 0)
-				open_close_door()
+				open_and_close_door()
 			}
 		}
 	}
@@ -66,7 +67,7 @@ func turn_off_lights(){
     }
 }
 
-func open_close_door(){
+func open_and_close_door(){
 	driver.Set_door_open_lamp(1)
 	time.Sleep(3 * time.Second)
 	driver.Set_door_open_lamp(0)
@@ -74,7 +75,7 @@ func open_close_door(){
 
 func set_direction(order,curFloor int){
 	if (math.Abs(float64(order)) - float64(curFloor)) != 0 {
-		//difference divided with abs(difference) gives direction = -1 or 1
+		//difference between cur floor and desired floor divided with abs(difference) gives direction = -1 or 1
 		dir := (math.Abs(float64(order)) - float64(curFloor)) / (float64(helpFunc.Difference_abs(order, curFloor)))
 		driver.Set_motor_dir(int(dir))
 		driver.Set_dir(int(dir))
@@ -89,7 +90,7 @@ func at_top_or_bottom(floorSensor int)bool{
 	return (floorSensor == 0) || (floorSensor == def.NumFloors-1)
 }
 
-func send_complete_msg(order int,outgoingMsg chan def.Message){
+func send_order_complete_msg(order int,outgoingMsg chan def.Message){
 	//if order down
 	if order < 0 {
 		msg := def.Message{Category: def.CompleteOrder, Floor: driver.Get_cur_floor(), Button: def.BtnDown, Cost: -1}

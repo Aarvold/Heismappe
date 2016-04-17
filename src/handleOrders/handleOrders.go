@@ -28,8 +28,9 @@ func Handle_orders(outgoingMsg, incomingMsg, costMsg, orderIsCompleted chan def.
 						handle_new_order(buttontype,floor,outgoingMsg)
 					}
 					buttonAlreadyPushed[floor][buttontype] = true
+					
 				} else {
-					buttonAlreadyPushed[floor][buttontype] = false
+					buttonAlreadyPushed[floor][buttontype] = false	
 				}
 			}
 		}
@@ -51,7 +52,7 @@ func handle_new_order(buttontype,floor int,outgoingMsg chan def.Message){
 		msg := def.Message{Category: def.NewOrder, Floor: floor, Button: buttontype, Cost: -1}
 		outgoingMsg <- msg
 	} else if !external_order(buttontype){
-		//Internal orders: if the desired floor is under the elevator it is set as a order down
+		// Internal orders: if the desired floor is under the elevator it is set as a order down
 		if floor == driver.Get_cur_floor() && driver.Get_dir() == 1{
 			queue.Set_Orders(queue.Update_orderlist(queue.Get_Orders(), -floor))
 		}else if floor < driver.Get_cur_floor(){
